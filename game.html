@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trivia Game</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Additional styles can go here */
+    /* The styles from earlier remain the same */
+  </style>
+</head>
+<body>
+  <div class="game-container" id="question-container">
+    <h2 id="question">Loading question...</h2>
+    <div id="options"></div>
+    <div id="timer"></div>
+    <div id="score-tally">Correct: 0 / Total: 0</div> <!-- Added the tally display -->
+  </div>
+
+  <div class="game-container" id="result" style="display: none;">
+    <h2>Game Over!</h2>
+    <p>Your score: <span id="final-score"></span></p>
+    <button id="back-to-home-btn">Back to Home</button> <!-- Back to Home button -->
+  </div>
+
+  <script type="module">
+    import questionBank from './questions.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const category = params.get('category');
+    const difficulty = params.get('difficulty');
+    const timerDuration = parseInt(params.get('timer'));
+
+    const questionContainer = document.getElementById('question-container');
+    const questionEl = document.getElementById('question');
+    const optionsEl = document.getElementById('options');
+    const timerEl = document.getElementById('timer');
+    const resultEl = document.getElementById('result');
+    const scoreTallyEl = document.getElementById('score-tally'); // Element to display the tally
+    const finalScoreEl = document.getElementById('final-score'); // To display the final score
+    const backToHomeBtn = document.getElementById('back-to-home-btn'); // Back to home button
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let totalAnswered = 0; // New variable to track total answered questions
+    let countdown;
+
+    const questions = questionBank[category]?.[difficulty] || [];
+
+    if (questions.length === 0) {
+      questionEl.textContent = "No questions available for this combination.";
+    } else {
+      startGame();
+    }
+
+    function startGame() {
+      displayQuestion();
+      startTimer(timerDuration);
+    }
+
+    function displayQuestion() {
+      if (currentQuestionIndex >= questions.length) {
+        showResult();
+        return;
+      }
+
+      const currentQ = questions[currentQuestionIndex];
+      questionEl.textContent = currentQ.question;
+      optionsEl.innerHTML = '';  // Clear the previous options
+
+      // Reset button styles (if any lingering colors)
+      const optionButtons = document.querySelectorAll('.option-btn');
+      optionButtons.forEach(button => {
+        button.style.backgroundColor = '';  // Remove background color
+        button.disabled = false;  // Re-enable the buttons for the new question
+      });
+
+      currentQ.options.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = option;
+        btn.onclick = () => checkAnswer(option, currentQ.answer);
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function checkAnswer(selected, correct) {
+      const optionButtons = document.querySelectorAll('.option-btn');
+
+      // Loop through the buttons and apply the correct or incorrect color
+      optionButtons.forEach(button => {
+        if (button.textContent === selected) {
+          if (selected === correct) {
+            button.style.backgroundColor = '#22c55e'; // Green for correct
+            score++;  // Increase score if the answer is correct
+          } else {
+            button.style.backgroundColor = '#ef4444'; // Red for incorrect
+          }
+        } else if (button.textContent === correct) {
+          button.style.backgroundColor = '#22c55e'; // Green for correct
+        }
+
+        // Disable buttons after selection to prevent further clicks
+        button.disabled = true;
+      });
+
+      // Update the tally of correct answers and total questions answered
+      totalAnswered++;
+      scoreTallyEl.textContent = `Correct: ${score} / Total: ${totalAnswered}`;
+
+      // Wait for 1 second before moving on to the next question
+      setTimeout(() => {
+        currentQuestionIndex++;
+        displayQuestion();
+      }, 1000);
+    }
+
+    function startTimer(seconds) {
+      timerEl.textContent = `Time Left: ${seconds}s`;
+
+      countdown = setInterval(() => {
+        seconds--;
+        timerEl.textContent = `Time Left: ${seconds}s`;
+
+        if (seconds <= 0) {
+          clearInterval(countdown);
+          showResult();
+        }
+      }, 1000);
+    }
+
+    function showResult() {
+      clearInterval(countdown);
+      questionContainer.style.display = 'none';
+      resultEl.style.display = 'block';
+      finalScoreEl.textContent = `${score} / ${questions.length}`; // Display the final score
+
+      // Enable the "Back to Home" button
+      backToHomeBtn.style.display = 'block';
+
+      // Add event listener for "Back to Home" button
+      backToHomeBtn.onclick = () => {
+        window.location.href = 'index.html'; // Redirect to the homepage (update with the correct link)
+      };
+
+      saveHighScore();
+    }
+
+    function saveHighScore() {
+      const highScores = JSON.parse(localStorage.getItem('highScores')) || [];
+      highScores.push({ score, category, difficulty });
+      localStorage.setItem('highScores', JSON.stringify(highScores));
+    }
+  </script>
+</body>
+</html>
